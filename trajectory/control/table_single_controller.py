@@ -1,0 +1,123 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5 import QtCore
+from copy import copy
+
+from trajectory.local_utils.qt_util import *
+from trajectory.config.file_type import  file_fmt
+
+import sys
+import numpy as np
+
+
+class TableSingleController(QWidget):
+    def __init__(self, parent=None):
+        super(TableSingleController, self).__init__(parent)
+        self.__init_ui_()
+
+    def __init_ui_(self):
+        self.table = QTableWidget()
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)  # 设置表格的选取方式是行选取
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # 不可编辑
+        fill_widget(self,1,[self.table],(1,1,1,1))
+
+    def __ui_connecter(self):
+        self.btn_add_item.clicked.connect(self._addItem)
+        self.btn_del_item.clicked.connect(self._deleteItem)
+        self.btn_edit_item.clicked.connect(self._editItem)
+        self.btn_save_item.clicked.connect(self._saveItem)
+
+    def table_sitting(self,filename):
+        self.oriArray = np.loadtxt(filename, delimiter=',', dtype=float)
+        self.table.setRowCount(self.oriArray.shape[0])
+        self.table.setColumnCount(self.oriArray.shape[1])
+        self.table.setHorizontalHeaderLabels(
+            ["经度", "纬度", "地图属性", "设定速度", "车道状态", "并道属性", "道路状态", "转向灯状态",
+             "右侧临时停车偏移距离", "自车道宽度", "左车道宽度", "右车道宽度", "轨迹左侧安全距离", "轨迹右侧安全距离",
+             "航向角", "Gps时间", "卫星个数"])
+        for row in range(self.oriArray.shape[0]):
+            for col in range(self.oriArray.shape[1]):
+                self.table.setItem(row, col, QTableWidgetItem(str(self.oriArray[row][col])))
+
+    def _addItem(self,file,row,data):
+        """
+        :param file: 添加操作的使能文件
+        :param row:要在第几行添加
+        :param data:添加的數據
+        :return:
+        """
+        row_select = self.table.selectedItems()
+        if len(row_select)==0:
+            return
+        num=row_select[0].row()+1
+        self.table.insertRow(num)
+        for i in range(len(row_select)):
+            self.table.setItem(num, i, QTableWidgetItem(str(row_select[i].text())))
+        self.oriArray=np.insert(self.oriArray,num,self.oriArray[num-1],axis=0)
+        self.update()
+
+    def _deleteItem(self,file,row):
+        """
+
+        :param file: 刪除操作的使能文件
+        :param row:要刪除文件的第几行
+        :return:
+        """
+        row_select = self.table.selectedItems()
+        if len(row_select) == 0:
+            return
+        selected_rows = []  # 求出所选择的行数(从0开始)
+        for i in row_select:
+            row = i.row()
+            if row not in selected_rows:
+                selected_rows.append(row)
+        for r in range(len(sorted(selected_rows))):
+            self.table.removeRow(selected_rows[r] - r)  # 删除行
+            self.oriArray = np.delete(self.oriArray, selected_rows[r] - r, axis=0)
+        self.update()
+
+    def _editItem(self,file,row,data):
+        """
+        :param file: 編輯操作的使能文件
+        :param row: 在第几行進行編輯
+        :param data: 進行編輯的數據   [olddata,newdata]
+        :return:
+        """
+        row_select = self.table.selectedItems()
+        if len(row_select) == 0:
+            return
+        odd_data=self.oriArray[row_select[0].row()][row_select[0].column()]
+        new_data=row_select[0].text()
+        if odd_data!=new_data:
+            self.oriArray[row_select[0].row()][row_select[0].column()]=new_data
+        self.update()
+
+    def _saveItem(self):
+        np.savetxt('1.txt',self.oriArray,fmt=file_fmt,delimiter = ',')
+
+    def _clearItem(self):
+        self.table.setRowCount(0)
+        self.table.setColumnCount(0)
+        self.table.clearContents()
+
+def main():
+    print('========原始数据==========')
+    x = np.array(np.arange(0, 16).reshape(4, 4))
+    print(x)
+
+    # 删除行：
+    print('========删除第二行后==========')
+    x1 = np.delete(x, 3, axis=0)
+    print(x1)
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    dlg = TableSingleController()
+    dlg.show()
+    sys.exit(app.exec_())
+

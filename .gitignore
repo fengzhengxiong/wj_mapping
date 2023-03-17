@@ -1,0 +1,13 @@
+.idea
+.idea/*
+.git/
+__pycache__
+__pycache__/*
+/build/
+/dist/
+app.spec
+/*.egg-info/
+trajectory/build/
+trajectory/dist/
+*.pyc
+/*.pyc
